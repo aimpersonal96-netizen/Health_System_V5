@@ -13,11 +13,25 @@
 
 **Status:** `APPROVED & LOCKED`
 
-## G1 — Pending User Acceptance to Start
+## G1 — Approved & Locked
 
-- [ ] Build the 20-sheet schema registry.
-- [ ] Implement the idempotent database setup.
-- [ ] Seed ConfigDB, RoleDB, and PermissionDB.
-- [ ] Implement the foundation audit.
+- [x] Built the canonical 20-sheet schema registry from Blueprint v1.3.3.
+- [x] Implemented the idempotent database setup.
+- [x] Seeded ConfigDB, RoleDB, and PermissionDB without duplicate keys.
+- [x] Applied canonical headers, data formats, validation, Clinical Navy styling, and header protection.
+- [x] Implemented and ran the foundation audit.
+- [x] User verified: 20 sheets, 402 total columns, Schema v1.3.3.
 
-No Google Sheet or Apps Script remote changes have been made during G0.
+**Acceptance evidence:** User reported `Audit ผ่าน 20 ชีต 402 คอลัมน์` on 2026-08-01.
+
+**Status:** `APPROVED & LOCKED`
+
+## G2 — Pending User Acceptance to Start
+
+- [ ] Implement the shared batch repository.
+- [ ] Implement PK, unique-key, FK, type, required-field, and allowed-value validation.
+- [ ] Implement LockService, soft delete, and RowVersion controls.
+- [ ] Seed synthetic DEV data and integrity test cases.
+- [ ] Produce the Data Integrity Report and verify structure backup/restore.
+
+No G2 implementation or mock-data seeding has started.
