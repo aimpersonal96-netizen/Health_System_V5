@@ -1,0 +1,11 @@
+# Local clasp project binding
+.clasp.json
+
+# Local credentials (must never be committed)
+.clasprc.json
+
+# macOS metadata
+.DS_Store
+
+# Intermediate image-generation assets
+assets/images/generated/*-chroma.png

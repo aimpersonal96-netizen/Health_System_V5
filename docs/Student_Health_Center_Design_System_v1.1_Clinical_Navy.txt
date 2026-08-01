@@ -1,0 +1,484 @@
+STUDENT HEALTH CENTER
+DESIGN SYSTEM v1.1
+Canonical Implementation Standard — Clinical Navy Single Theme
+สถานะเอกสาร: APPROVED & LOCKED
+
+มาตรฐานกลางสำหรับการออกแบบและพัฒนาเว็บไซต์
+ศูนย์ระบบสุขภาพนักเรียน
+
+
+1. สถานะและการใช้งานเอกสาร
+• เอกสารฉบับนี้เป็นมาตรฐานกลางของ Student Health Center Design System v1.1 สำหรับทีมออกแบบและทีมพัฒนา
+• ทีมพัฒนาต้องยึดสี ฟอนต์ ระยะห่าง ไอคอน ปุ่ม ฟอร์ม ตาราง การ์ด และกฎการออกแบบตามเอกสารนี้
+• ห้ามสร้างสี ขนาด ระยะห่าง หรือคอมโพเนนต์ใหม่โดยไม่ได้ปรับปรุง Design System เป็นเวอร์ชันใหม่ก่อน
+• ทุกหน้าต้องรองรับทั้งหน้าจอคอมพิวเตอร์และหน้าจอมือถือ
+2. Design Philosophy
+Professional • Minimal • Clinical • Calm • Fast
+• Professional
+• Clean
+• Calm
+• Modern
+• Healthcare
+• Enterprise
+• Data First
+3. สิ่งที่ห้ามใช้
+• สีฉูดฉาด
+• Animation มากเกินไป
+• Card ซ้อนหลายชั้น
+• Gradient มากเกินไป
+• Glass Effect ที่รบกวนการอ่าน
+• Shadow หนา
+• สีสะท้อนหรือองค์ประกอบที่ลดความน่าเชื่อถือ
+4. Color System
+กลุ่มสี
+ชื่อ
+รหัสสี
+การใช้งานหลัก
+Primary
+Primary Action Blue
+#1D4ED8
+ปุ่มหลัก ลิงก์ Focus และ Action สำคัญ
+Secondary
+Clinical Teal
+#0F766E
+ข้อมูลสุขภาพรอง ตัวกรอง และสถานะเลือก
+Success
+Green
+#15803D
+สำเร็จ ปกติ สุขภาพดี
+Warning
+Amber
+#FEF3C7 / #92400E
+พื้นคำเตือน / ตัวอักษรคำเตือน
+Danger
+Red
+#B91C1C
+เร่งด่วน ผิดพลาด อันตราย
+Information
+Active Surface
+#DBEAFE / #1E3A5F
+พื้น Active / ตัวอักษรและไอคอน
+Background
+Main Background
+#F8FAFC
+พื้นหลังหลัก
+Surface
+White
+#FFFFFF
+Card Sidebar และพื้นที่เนื้อหา
+Structural
+Clinical Navy
+#0B1F3A
+Sidebar, Topbar, Database Sheet Header
+5. Gray Scale
+ระดับ
+รหัสสี
+50
+#F8FAFC
+100
+#F1F5F9
+200
+#E2E8F0
+300
+#CBD5E1
+400
+#94A3B8
+500
+#64748B
+600
+#475569
+700
+#334155
+800
+#1E293B
+900
+#0F172A
+6. Typography
+ฟอนต์หลัก: Prompt | ฟอนต์สำรอง: Sarabun
+ประเภท
+Desktop
+Mobile
+Display
+40 px
+—
+H1
+32 px
+28 px
+H2
+28 px
+24 px
+H3
+24 px
+20 px
+Title
+20 px
+20 px
+Body
+16 px
+16 px
+Small
+14 px
+14 px
+Caption
+12 px
+12 px
+7. Border Radius
+Component
+Radius
+Button
+12 px
+Input
+12 px
+Card
+20 px
+Modal
+24 px
+Image
+16 px
+Badge
+999 px
+8. Shadow
+ประเภท
+ค่า
+Card
+0 4px 12px rgba(15,23,42,.06)
+Hover
+0 8px 24px rgba(15,23,42,.08)
+Modal
+0 20px 60px rgba(15,23,42,.15)
+9. Spacing System
+ค่าที่อนุญาต: 4, 8, 12, 16, 20, 24, 32, 40, 48 และ 64 px
+ห้ามกำหนดระยะห่างนอกชุดนี้
+10. Grid System
+อุปกรณ์
+Grid
+ข้อกำหนด
+Desktop
+12 Columns
+Container 1440 px / Content 1280 px
+Tablet
+8 Columns
+Responsive Layout
+Mobile
+4 Columns
+ออกแบบใหม่ตามงาน ไม่ย่อ Desktop ตรง ๆ
+11. Icon System
+Material Symbols Rounded
+ขนาดมาตรฐาน
+การใช้งาน
+16 px
+ไอคอนขนาดเล็ก
+20 px
+ภายในปุ่มหรือฟอร์ม
+24 px
+Navigation
+28 px
+Feature
+32 px
+ข้อมูลเด่น
+12. Button
+ชนิด
+รูปแบบ
+Primary
+พื้นน้ำเงิน ตัวอักษรขาว สูง 48 px Radius 12 px
+Secondary
+พื้นขาว ขอบน้ำเงิน
+Danger
+พื้นแดง ตัวอักษรขาว
+Text Button
+ไม่มีกรอบ ตัวอักษรน้ำเงิน
+Disabled
+สีเทา ไม่ตอบสนอง
+13. Input
+คุณสมบัติ
+ข้อกำหนด
+Height
+48 px
+Radius
+12 px
+Border
+#CBD5E1
+Focus
+ขอบ Primary Blue
+Error
+ขอบ Danger Red
+14. Card
+คุณสมบัติ
+ข้อกำหนด
+Background
+#FFFFFF
+Radius
+20 px
+Padding
+24 px
+Shadow
+Card Shadow
+Gradient
+ไม่ใช้
+15. Table
+ส่วน
+ข้อกำหนด
+Header
+Gray 100 / สูง 48 px
+Row
+สูง 52 px
+Hover
+Blue 50
+เส้นตาราง
+ไม่มีเส้นตั้ง ใช้เฉพาะเส้นแบ่งแนวนอน
+16. Badge
+ชนิด
+สี
+Success
+Green
+Warning
+Amber
+Danger
+Red
+Info
+Blue
+Neutral
+Gray
+17. Alert
+• ใช้เส้นสีด้านซ้ายหนา 4 px
+• พื้นหลังสีขาว
+• ไอคอนใช้สีตามระดับสถานะ
+• ห้ามใช้พื้นแดงเต็มกล่อง
+18. Form Layout
+อุปกรณ์
+รูปแบบ
+Desktop
+สูงสุด 2 คอลัมน์
+Mobile
+1 คอลัมน์
+Section
+แยกเป็น Card ตามหมวดข้อมูล
+19. Chart
+หัวข้อ
+ข้อกำหนด
+Library
+Chart.js
+Style
+Minimal
+3D
+ไม่ใช้
+Gradient
+ไม่ใช้
+Corner
+Rounded เมื่อเหมาะสม
+20. Navigation
+อุปกรณ์
+รูปแบบ
+Desktop
+Left Sidebar และย่อได้
+Mobile
+Bottom Navigation จำนวน 5 เมนู
+21. Animation
+Duration มาตรฐาน: 200 ms
+• Hover
+• Open
+• Close
+• Page Transition
+22. Responsive Breakpoint
+ประเภท
+ค่ามาตรฐาน
+Desktop
+1440 px ขึ้นไป
+Laptop
+1280 px
+Tablet
+768 px
+Mobile
+390 px
+23. Loading / Empty / Search / Filter / Pagination
+Component
+ข้อกำหนด
+Loading
+ใช้ Skeleton Loading แทน Spinner
+Empty State
+มี Icon, Title, Description และ Button
+Search
+อยู่ด้านบนของทุกหน้า List
+Filter
+อยู่ด้านขวาของ Search
+Pagination
+อยู่ด้านล่างขวา
+24. Modal / Notification
+Component
+ข้อกำหนด
+Modal
+ความกว้างสูงสุด 720 px
+Notification
+แสดงด้านขวาบน และปิดอัตโนมัติภายใน 5 วินาที
+25. Layout Dimensions
+องค์ประกอบ
+ขนาด
+Sidebar
+280 px
+Sidebar Collapsed
+88 px
+Header
+72 px
+Footer
+56 px
+Page Content
+1280 px
+Section Gap
+32 px
+26. Student Photo / KPI Card
+Component
+Desktop
+Mobile
+Student Photo
+120 px
+96 px
+KPI Card
+320 × 150 px
+เต็มความกว้าง
+27. Accessibility
+• ต้องผ่าน Contrast ระดับ AA
+• อัตราส่วน Contrast ขั้นต่ำ 4.5:1
+• ข้อความสำคัญห้ามสื่อด้วยสีเพียงอย่างเดียว
+• ขนาดพื้นที่กดต้องเหมาะกับการสัมผัสบนมือถือ
+28. Component Naming
+• Primary Button
+• Secondary Button
+• Input
+• Select
+• Card
+• Summary Card
+• Action Card
+• Alert Card
+• Student Card
+• Chart Card
+• Table Card
+29. CSS Variables
+• --primary
+• --success
+• --danger
+• --radius
+• --shadow
+• --spacing
+• --font
+ห้าม Hardcode ค่าสี ระยะห่าง รัศมี เงา หรือฟอนต์ในแต่ละหน้า
+30. Single Theme Policy
+Version 1.1: ไม่เปิดใช้งาน
+ไม่พัฒนา Theme toggle และไม่เตรียม Token ชุดที่สอง เพื่อลดความซับซ้อนและความเสี่ยงในการดูแลโค้ด
+31. Design Rule — กฎสูงสุด
+1. ข้อมูลสำคัญต้องเห็นก่อนความสวยงาม
+2. ทุกหน้าต้องใช้ Component กลางเท่านั้น
+3. ห้ามสร้างสีใหม่หรือขนาดใหม่โดยไม่มีการอนุมัติ
+4. ทุกหน้าต้อง Responsive ทั้ง Desktop และ Mobile
+5. ทุกองค์ประกอบต้องใช้ Design Token จากระบบกลาง
+6. การเพิ่ม Component ใหม่ ต้องผ่านการอัปเดต Design System ก่อนนำไปใช้ในโค้ด
+7. เอกสารฉบับนี้เป็นมาตรฐานอ้างอิงหลักสำหรับทีมพัฒนาใน Version 1.1
+32. สถานะการอนุมัติ
+รายการ
+สถานะ
+Design System Version
+v1.1
+Phase
+Canonical — Clinical Navy Single Theme
+Approval
+APPROVED
+Lock Status
+LOCKED
+การนำไปใช้งาน
+ใช้เป็นมาตรฐานกลางของทีมเขียนโค้ด
+
+
+33. Visual Direction — Modern Clinical Command Center
+Clinical Navy Single Theme
+ใช้ Navy สร้างความมั่นคงใน Sidebar/Topbar และใช้พื้นสว่างในพื้นที่อ่านข้อมูล ทำให้ภาพรวมเข้ม สุขุม แต่ไม่มืดทึบ ไม่มีโหมดมืดและไม่มี Theme toggle
+Role
+Token
+Usage
+โครงสร้าง
+Navy #0B1F3A
+Sidebar, Topbar, Sheet Header
+Action
+Blue #1D4ED8
+Primary button, link, focus
+Icon
+#1E3A5F
+Default navigation icon; currentColor
+Active
+#2563EB / #DBEAFE
+Active foreground / active background
+Health Accent
+Teal #0F766E
+ข้อมูลสุขภาพรองและสถานะเลือก
+Reading Surface
+#F8FAFC / #FFFFFF
+Page / Card
+Text
+#0F172A / #64748B
+Primary / Muted
+34. Single Theme Engineering Contract
+• ประกาศ Token เพียงชุดเดียวใน :root และห้ามมี [data-theme], .dark หรือ prefers-color-scheme branch
+• ห้าม Hardcode สีในหน้า Module; ใช้ CSS Variables กลางเท่านั้น
+• Primary Action ใช้ข้อความสีขาว ส่วน Warning ใช้พื้น #FEF3C7 กับข้อความ #92400E
+• Sheet Header ใช้ #0B1F3A กับข้อความสีขาว เพื่อให้ชื่อฐานข้อมูลตรงกับ Visual Contract
+• Icon Set ใช้ 24 × 24 px, safe area 20 × 20 px, stroke 2 px, round cap/join และ lower_snake_case.svg
+• ภาพคู่มือ Icon Set ที่แสดงลำดับ Drug เป็น 55 ให้แก้ label เป็น 05 ในไฟล์ภาพต้นฉบับรอบถัดไป; ชื่อไฟล์ drug.svg ถูกต้อง
+
+
+35. Approved Token Table
+CSS Token
+Value
+Text Pair
+Use
+--color-structural
+#0B1F3A
+#FFFFFF
+Sidebar/Topbar
+--color-primary
+#1D4ED8
+#FFFFFF
+Primary action
+--color-icon
+#1E3A5F
+currentColor
+Default icons
+--color-active
+#2563EB
+#FFFFFF
+Active control
+--color-active-bg
+#DBEAFE
+#1E3A5F
+Active surface
+--color-teal
+#0F766E
+#FFFFFF
+Clinical accent
+--color-bg
+#F8FAFC
+#0F172A
+Page background
+--color-surface
+#FFFFFF
+#0F172A
+Card/table/form
+--color-success
+#15803D
+#FFFFFF
+Success
+--color-warning-bg
+#FEF3C7
+#92400E
+Warning
+--color-danger
+#B91C1C
+#FFFFFF
+Danger
+--color-muted
+#64748B
+#FFFFFF
+Muted text
+36. Approval and Change Control
+Student Health Center Design System v1.1 มีสถานะ APPROVED & LOCKED และแทนที่ v1.0 เฉพาะ Color Role, Single Theme Policy และ Engineering Contract ส่วน Grid, Typography, Spacing, Component และ Responsive Rule อื่นยังคงใช้ต่อ
+การเพิ่ม Theme, เปลี่ยน Token, เปลี่ยน Icon construction หรือสร้าง Component ใหม่ต้องออก Change Request และ Regression Test ก่อนนำไปใช้ในโค้ด
+Student Health Center • Design System v1.1
+
+หน้า 1

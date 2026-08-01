@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title description">
+  <title id="title">Health V5 system logo</title>
+  <desc id="description">A protective shield containing a medical cross, a student, and two growth leaves.</desc>
+  <path
+    d="M256 38C314 73 374 94 442 108V238C442 354 369 444 256 486C143 444 70 354 70 238V108C138 94 198 73 256 38Z"
+    fill="none"
+    stroke="#1D4ED8"
+    stroke-width="24"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M218 122H294V180H352V256H294V314H218V256H160V180H218Z"
+    fill="#1D4ED8"
+  />
+  <circle cx="256" cy="286" r="28" fill="#0B1F3A" />
+  <path
+    d="M248 423C191 405 143 357 122 298C183 309 229 350 248 423Z"
+    fill="#1D4ED8"
+  />
+  <path
+    d="M264 423C321 405 369 357 390 298C329 309 283 350 264 423Z"
+    fill="#0F766E"
+  />
+</svg>

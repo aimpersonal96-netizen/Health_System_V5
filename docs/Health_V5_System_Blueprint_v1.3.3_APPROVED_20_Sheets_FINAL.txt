@@ -1,0 +1,4081 @@
+HEALTH V5
+ศูนย์ระบบสุขภาพนักเรียน
+SYSTEM BLUEPRINT v1.3.3
+Canonical 20-Sheet Architecture • Approved Foundation
+สถานะเอกสาร: APPROVED — SINGLE SOURCE OF TRUTH
+ฉบับนี้แทนที่ Blueprint v1.3.2 โดยล็อก OTP Policy, Emergency Session และ Email Data Minimization เพิ่มเติม และคง Canonical Schema 20 ชีตเดิมทั้งหมด
+รายการ
+ค่าที่อนุมัติ
+Version
+1.3.3
+จำนวนชีต
+20 ชีต (Canonical)
+RoleKey
+ADMIN • HEALTH • TEACHER • EXECUTIVE
+Design
+Modern Clinical Command Center — Clinical Navy Single Theme
+วันที่อนุมัติ
+1 สิงหาคม 2569
+
+
+สารบัญเชิงโครงสร้าง
+1. มติสถาปัตยกรรมและขอบเขต
+2. Role, Authentication และ Access Gate
+3. PermissionDB และ Field-level Access
+4. มาตรฐานฐานข้อมูล 20 ชีต
+5. StaffDB และความปลอดภัยบัญชี
+6. Audit Log และการตรวจสอบย้อนหลัง
+7. การรับบริการและการจ่ายยาแบบหลายรายการ
+8. คลังยา Lot/Ledger และ FEFO
+9. โมดูลสุขภาพ รายงาน และข้อมูลหอนอน
+10. Design Style Contract
+11. Foundation Gate, QA และ Change Control
+ภาคผนวก ก. Canonical Data Dictionary ครบ 20 ชีต
+ภาคผนวก ข. Module Completion Report
+
+
+1. มติสถาปัตยกรรมและขอบเขต
+คำตัดสินหลัก
+ระบบใช้ 20 ชีตเท่านั้น ชื่อและลำดับฟิลด์ในภาคผนวก ก เป็น Canonical Schema ห้ามเพิ่ม ลบ เปลี่ยนชื่อ หรือสลับลำดับโดยไม่ผ่าน Change Request
+หัวข้อ
+ข้อกำหนดที่อนุมัติ
+Design System
+v1.1 APPROVED & LOCKED; สืบทอดหลักจาก v1.0 และล็อก Single Theme
+RoleKey
+ADMIN, HEALTH, TEACHER, EXECUTIVE เท่านั้น
+Login
+ADMIN และ HEALTH ใช้ Username + PIN/Password ตาม StaffDB และ Email OTP ทุกครั้งที่เข้าสู่ระบบ
+TEACHER
+ไม่ใช้ QR และไม่สร้าง PIN; ครั้งแรกกรอกข้อมูลบุคลากรให้ตรง StaffDB แล้วระบบเปิดสิทธิ์และจำอุปกรณ์; ทุกครั้งเลือก Access Context; Read-only
+EXECUTIVE
+ไม่ใช้ QR และไม่สร้าง PIN; ครั้งแรกกรอกข้อมูลบุคลากรให้ตรง StaffDB แล้วระบบเปิดสิทธิ์และจำอุปกรณ์; Read-only + Decision Reports
+Routine Medication Log
+ตัดออก ไม่ให้ครูเวรบันทึกยาทุกมื้อ
+Visit Items
+ใช้ NurseVisitItemDB รองรับหลายยา/เวชภัณฑ์ต่อ Visit
+Stock
+Item Master + Lot Ledger; จ่ายแบบ FEFO
+Audit
+Append-only + Before/After + Reason + Export reference + Hash chain
+Theme
+Clinical Navy Single Theme; ไม่มี Light/Dark toggle
+1.1 หลัก Single Source of Truth
+เอกสารฉบับนี้และ Google Sheets ที่ใช้ Schema Version 1.3.3 ต้องตรงกันทุกชื่อฟิลด์และ Allowed Value หากไม่ตรง ให้หยุดพัฒนา CRUD และเสนอแก้ Blueprint ก่อน
+Design System v1.1 เป็น Single Source of Truth ด้านหน้าตา ส่วน Blueprint v1.3.3 เป็น Single Source of Truth ด้าน Architecture, Permission, Data และ Workflow
+2. Role, Authentication และ Access Gate
+RoleKey
+การเข้าใช้
+DataScope
+สิทธิ์หลัก
+Access Gate
+ADMIN
+Credential Login + Email OTP
+ALL_DATA
+ทุกอย่าง รวมปรับโครงสร้างระบบ
+ไม่มี
+HEALTH
+Credential Login + Email OTP
+ALL_DATA
+ทุกงานปฏิบัติการ ยกเว้นปรับโครงสร้างระบบ
+CanModifySchema = FALSE
+TEACHER
+First-use Staff Verification + Trusted Device
+DECLARED_CONTEXT
+ดูอย่างเดียว; ดูแผนยาปัจจุบันแบบจำกัดฟิลด์; เลขบัตรเต็มใช้ Break-glass เท่านั้น
+กรอกข้อมูลให้ตรง StaffDB ครั้งแรก + เลือกบริบททุกครั้ง
+EXECUTIVE
+First-use Staff Verification + Trusted Device
+ALL_STUDENTS_REPORT
+รายงานเพื่อการตัดสินใจแบบ Read-only; ไม่ส่งออกข้อมูลดิบ
+กรอกข้อมูลให้ตรง StaffDB ครั้งแรก
+2.1 TEACHER Access Flow
+ครั้งแรกกรอก FirstName และ LastName ระบบค้นหา StaffDB ด้วยค่าที่ปรับรูปแบบแล้ว หากพบหนึ่งรายการให้แสดงข้อมูลยืนยันแบบปิดบางส่วนก่อนเปิดสิทธิ์ หากชื่อซ้ำให้ตรวจ Phone เพิ่มเติม
+หาก Phone ที่กรอกไม่ตรง StaffDB ให้แจ้งว่าข้อมูลอาจเปลี่ยน ห้ามแก้ StaffDB อัตโนมัติ และสร้างคำขอตรวจสอบข้อมูลให้ ADMIN/HEALTH ก่อนใช้เบอร์ใหม่เป็นข้อมูลยืนยัน
+ระบบต้องตรวจ RoleKey = TEACHER, LoginEnabled = TRUE, RecordStatus = ACTIVE และไม่ถูกระงับ ก่อนสร้าง Trusted Device
+ไม่ใช้ QR และไม่ให้ TEACHER สร้าง PIN/Password อนุญาต Trusted Device ที่ Active ได้หนึ่งอุปกรณ์ต่อ StaffID และให้ยืนยันใหม่เมื่อหมดอายุ เปลี่ยนอุปกรณ์ หรือล้างข้อมูล Browser
+ก่อนเปิดข้อมูลทุก Session ให้เลือก Access Context เพียง 3 ค่า: CLASSROOM (ครูประจำชั้น/ห้องเรียน), DUTY (ครูเวร/สถานที่และช่วงเวร) หรือ DORM (ครูหอนอน/หอนอน)
+ระบบสร้าง RequestID และบันทึก StaffID, RoleKey, Access Context, Scope ที่กรอก, เวลา, StudentID และ Resource ที่เปิดใน LogDB
+TEACHER เป็น Read-only ทุก Resource ห้าม Create, Update, Cancel และ Export ข้อมูลดิบ
+แผนยาปัจจุบันเปิดดูได้โดยไม่ใช้ Break-glass และไม่ผูกครูไว้กับประเภทหน้าที่ถาวร โดยส่งไป Browser เฉพาะ MedicineName, Strength, Dose, เวลาใช้ยา, Route และ Precaution ของ PlanStatus = ACTIVE และ RecordStatus = ACTIVE
+เลขบัตรประชาชนแสดงแบบปิดบางส่วนตามปกติ การเปิดเลขเต็มต้องผ่าน NationalID Break-glass ตามข้อ 2.3
+2.2 EXECUTIVE Access Flow
+ครั้งแรกตรวจ FirstName/LastName และใช้ Phone เมื่อชื่อซ้ำตามกติกาเดียวกับ TEACHER จากนั้นตรวจ RoleKey = EXECUTIVE, LoginEnabled = TRUE และ RecordStatus = ACTIVE ก่อนสร้าง Trusted Device
+EXECUTIVE เปิดได้เฉพาะรายงานเพื่อการตัดสินใจแบบ Read-only ระบบบันทึกการเปิดรายงานใน LogDB ทุกครั้ง ห้ามมีปุ่ม Create, Update, Cancel, Export ข้อมูลดิบ หรือปรับโครงสร้างระบบ
+2.3 NationalID Break-glass และ External Medical Request
+เลขบัตรประชาชนแสดงแบบปิดบางส่วนเป็นค่าเริ่มต้น การเปิดเลขเต็มต้องเลือกเหตุผลฉุกเฉินและยืนยัน Break-glass ทุกครั้ง โดยไม่รออนุมัติล่วงหน้าเมื่อจำเป็นต่อการดูแลหรือนำส่งสถานพยาบาล
+เมื่อบุคลากรทางการแพทย์ภายนอกขอข้อมูล ผู้เปิดเผยต้องกรอกชื่อผู้ขอ ตำแหน่ง/วิชาชีพ หน่วยงานหรือสถานพยาบาล เบอร์ติดต่อ วัตถุประสงค์ ข้อมูลที่ขอ ความเร่งด่วน และเลขอ้างอิงเอกสารถ้ามี
+บุคลากรภายนอกไม่มีบัญชีและไม่เข้าระบบโดยตรง ระบบเปิดหรือส่งออกเฉพาะข้อมูลจำเป็น พร้อม StaffID ผู้เปิดเผย, ผู้รับ, หน่วยงาน, วันเวลา และ RequestID
+คำขอปกติให้ HEALTH ตรวจสอบก่อนเปิดเผย ส่วนเหตุฉุกเฉินใช้ Break-glass และแจ้ง HEALTH ตรวจสอบย้อนหลัง
+ข้อควบคุมความเสี่ยง
+First-use Staff Verification เป็นมติทางธุรกิจและไม่เทียบเท่า PIN/OTP ผู้พัฒนาต้องลดความเสี่ยงด้วย Trusted Device revocation, Read-only API, rate limit, generic error, RequestID, Audit, session timeout, field mask และห้ามส่งข้อมูลเกิน PermissionDB
+2.4 Session, Lockout, Device Change และ Emergency Access
+Trusted Device มีอายุตามภาคเรียน โดยหมดอายุตาม TermEndDate ที่กำหนดใน ConfigDB และต้องยืนยันใหม่เมื่อเริ่มภาคเรียนถัดไป
+Session เมื่อเปิดระบบมีอายุสูงสุด 30 นาที และออกจากระบบเมื่อไม่มีกิจกรรมต่อเนื่อง 15 นาที ค่าใดถึงก่อนให้ใช้ค่านั้น
+กรอกข้อมูลยืนยันผิดครบ 5 ครั้งให้ระงับการยืนยันปกติ 15 นาที ใช้ข้อความผิดพลาดแบบไม่เปิดเผยว่าฟิลด์ใดถูกหรือผิด
+ระหว่างถูกระงับให้มีปุ่ม Emergency Access แยกจากการเข้าสู่ระบบปกติ ปุ่มนี้ไม่ปลดล็อกบัญชีและเปิดได้เฉพาะข้อมูลฉุกเฉินขั้นต่ำ หลังกรอกชื่อผู้ใช้ Access Context นักเรียน เหตุผล และข้อมูลผู้รับภายนอกเมื่อเกี่ยวข้อง พร้อมบันทึก BREAK_GLASS_ACCESS และส่งอีเมลแจ้งเตือนทันที
+Emergency Access จากอุปกรณ์ใหม่ที่ยังไม่ผ่าน Trusted Device อนุญาตให้เปิดเลขบัตรประชาชนเต็มได้ตามมติความเสี่ยงที่ยอมรับ แต่ต้องสร้าง Emergency Session อายุไม่เกิน 5 นาที จำกัด StudentID เดียวต่อ Request ห้าม Browse/Export รายชื่อนักเรียน และต้องบันทึก/แจ้งเตือนทุกครั้ง
+การเปลี่ยนอุปกรณ์ให้สุ่มถาม 2 รายการจาก LastName, Phone และ Email แล้วตรวจเทียบ StaffDB การตอบถูกต้องต้องเพิกถอน Trusted Device เดิมก่อนสร้างอุปกรณ์ใหม่
+หากข้อมูล Phone หรือ Email เปลี่ยน ให้แสดงข้อมูลเดิมแบบปิดบางส่วนและสร้างคำขอแก้ไขให้ ADMIN/HEALTH ห้ามผู้ใช้แทนค่าข้อมูลยืนยันเองโดยไม่ผ่านการตรวจสอบ
+TEACHER และ EXECUTIVE สามารถดูและเพิกถอน Trusted Device ปัจจุบันของตนเองได้ ADMIN มีหน้าจอดูอุปกรณ์ปัจจุบัน เพิกถอน ระงับสิทธิ์ และปรับ RoleKey/Assignment ของครูโดยต้องบันทึก BeforeJSON, AfterJSON และ ChangeReason
+3. PermissionDB และ Field-level Access
+Role
+View
+Create
+Update
+Cancel
+Export
+NationalID
+ModifySchema
+Scope
+ADMIN
+TRUE
+TRUE
+TRUE
+TRUE
+TRUE
+TRUE
+เฉพาะ SETTINGS
+ALL_DATA
+HEALTH
+TRUE
+TRUE
+TRUE
+TRUE
+TRUE
+TRUE
+FALSE
+ALL_DATA
+TEACHER
+ตาม Resource
+FALSE
+FALSE
+FALSE
+FALSE
+TRUE*
+FALSE
+DECLARED_CONTEXT
+EXECUTIVE
+ตาม TEACHER + REPORT
+FALSE
+FALSE
+FALSE
+FALSE
+TRUE*
+FALSE
+ALL_STUDENTS_REPORT
+* NationalID เปิดเฉพาะ Resource STUDENT และ REFER ตามความจำเป็นในการดูแลหรือนำส่งสถานพยาบาล เลขเต็มต้องใช้ Break-glass และสร้าง Audit Event ทุกครั้ง
+3.1 กฎการบังคับสิทธิ์
+Backend ต้องอ่าน PermissionDB ทุกครั้ง ห้ามพึ่งการซ่อนปุ่มบนหน้าเว็บ
+CanCancel ใช้แทน Delete และเปลี่ยน RecordStatus; ห้ามลบแถวจริง
+CanModifySchema ตรวจแยกจาก CanUpdate; HEALTH ต้องเป็น FALSE เสมอ
+Resource ที่ CanView = FALSE ต้องไม่ถูก Query และไม่ส่งข้อมูลไป Browser
+รายงาน EXECUTIVE ใช้ Resource REPORT และไม่มีสิทธิ์ Export ข้อมูลดิบ
+Resource DRUG_PLAN สำหรับ TEACHER ส่งเฉพาะ MedicineName, Strength, Dose, schedule flags ที่แปลงเป็นข้อความเวลา, Route และ Precaution ของแผน ACTIVE เท่านั้น
+การเลือก Access Context เป็นข้อมูลประกอบ Audit และการใช้งาน ไม่ใช่สิทธิ์แก้ไขข้อมูล
+4. มาตรฐานฐานข้อมูล 20 ชีต
+No.
+Sheet
+Fields
+Owner
+Purpose
+01
+ConfigDB
+16
+SYSTEM
+ค่ากำหนดกลางและ Feature/Policy ที่โค้ดอ่านใช้งาน
+02
+ClassroomDB
+14
+HEALTH
+ทะเบียนห้องเรียนและขอบเขตชั้นเรียน
+03
+StudentDB
+24
+HEALTH
+ข้อมูลหลักนักเรียนและข้อมูลจำเป็นต่อการดูแล
+04
+StaffDB
+24
+HEALTH
+บัญชีบุคลากรและสถานะการเข้าสู่ระบบ
+05
+RoleDB
+14
+SYSTEM
+บทบาทมาตรฐาน 4 ค่าและรูปแบบการเข้าถึง
+06
+PermissionDB
+21
+SYSTEM
+สิทธิ์ราย Resource และเงื่อนไขก่อนเข้าถึง
+07
+DutyDB
+17
+HEALTH
+เวรและช่วงเวลาปฏิบัติงาน โดยไม่ใช้เป็นภาระบันทึกการให้ยา
+08
+DrugDB
+30
+HEALTH
+แผนยาประจำตัวของนักเรียน ไม่ใช่บันทึกการให้ยาทุกมื้อ
+09
+NurseVisitItemDB
+21
+HEALTH
+รายการยา เวชภัณฑ์ หรือการดูแลหลายรายการต่อ Visit
+10
+NurseVisitDB
+19
+HEALTH
+หัวรายการรับบริการห้องพยาบาล
+11
+ReferDB
+20
+HEALTH
+การส่งต่อสถานพยาบาลและผลติดตาม
+12
+HealthDB
+24
+HEALTH
+ผลตรวจและคัดกรองสุขภาพ
+13
+FitnessDB
+21
+HEALTH
+ผลทดสอบสมรรถภาพตามเวอร์ชันเกณฑ์
+14
+LogDB
+25
+SYSTEM
+Audit Log แบบ append-only สำหรับการดู แก้ไข ส่งออก และข้อผิดพลาด
+15
+CommonDrugStockDB
+18
+STOCK
+ทะเบียนรายการยาและเวชภัณฑ์
+16
+StockTransactionDB
+24
+STOCK
+บัญชีเคลื่อนไหวแยก Lot/Expiry และฐานคำนวณ FEFO
+17
+DiseaseEventDB
+24
+HEALTH
+เหตุการณ์ ผู้ป่วย ผู้สัมผัส และประกาศสาธารณะ
+18
+AssignmentDB
+17
+HEALTH
+การมอบหมายบุคลากรกับห้อง หอ หรือนักเรียน
+19
+DormDB
+13
+HEALTH
+ทะเบียนหอนอน
+20
+StudentDormHistoryDB
+16
+HEALTH
+ประวัติการพักและย้ายหอนอน
+4.1 Naming Convention
+ชื่อชีตและฟิลด์ใช้ English PascalCase ตาม Data Dictionary เท่านั้น
+Primary Key ลงท้าย ID และอยู่คอลัมน์แรก
+วันเวลาใช้ ISO 8601 พร้อม Asia/Bangkok; วันที่ล้วนใช้ YYYY-MM-DD
+สถานะ Soft delete ใช้ RecordStatus = ACTIVE, CANCELLED หรือ INVALID
+ทุกชีตธุรกรรมมี CreatedAt, CreatedBy, UpdatedAt, UpdatedBy, RowVersion และ Note
+RowVersion ต้องเพิ่มทีละ 1 เมื่อ Update เพื่อป้องกัน Lost Update
+4.2 ความสัมพันธ์ที่ห้ามขาด
+Foreign Key
+Reference
+Rule
+StudentDB.ClassroomID
+ClassroomDB.ClassroomID
+นักเรียนต้องอยู่ในห้องที่มีอยู่
+DrugDB.StudentID
+StudentDB.StudentID
+แผนยาอ้างนักเรียน
+NurseVisitDB.StudentID
+StudentDB.StudentID
+Visit อ้างนักเรียน
+NurseVisitItemDB.VisitID
+NurseVisitDB.VisitID
+รองรับหลาย Line ต่อ Visit
+NurseVisitItemDB.StockItemID
+CommonDrugStockDB.StockItemID
+รายการที่ตัดสต็อก
+StockTransactionDB.VisitItemID
+NurseVisitItemDB.VisitItemID
+เชื่อมการจ่ายกับ Ledger
+StudentDormHistoryDB.DormID
+DormDB.DormID
+ประวัติหอนอน
+AssignmentDB.ScopeID
+Master ตาม ScopeType
+ควบคุมขอบเขตบุคลากร
+5. StaffDB และความปลอดภัยบัญชี
+StaffDB รองรับ Username + PIN/Password + Email OTP สำหรับ ADMIN และ HEALTH โดยตรง ส่วน TEACHER/EXECUTIVE ใช้ FirstName, LastName, Phone และ Email สำหรับ First-use Staff Verification/Device Change และใช้ Trusted Device โดยไม่ใช้ QR และไม่สร้าง PIN
+LoginEnabled = TRUE หมายถึงบุคลากรได้รับอนุญาตให้เข้าใช้ตาม Access Flow ของ RoleKey; LoginEnabled = FALSE ต้องปฏิเสธทั้ง Credential Login และ Trusted Device
+PIN/Password ต้องเก็บเฉพาะ PINHash + PINSalt; ห้ามเก็บค่าเดิม
+ADMIN และ HEALTH ต้องมี Email ที่ตรวจสอบแล้วจึงเปิด LoginEnabled ได้ ระบบส่ง OTP ไปยัง Email ใน StaffDB หลัง Username + PIN/Password ผ่าน และต้องตรวจ OTP สำเร็จก่อนสร้าง Session
+OTP มีอายุ 10 นาที ส่งใหม่ได้หลัง 60 วินาที และส่งได้ไม่เกิน 3 ครั้งต่อ StaffID/Request ภายใน 15 นาที OTP ใช้ได้ครั้งเดียวและต้องถูกทำลายเมื่อยืนยันสำเร็จ หมดอายุ หรือมีการออก OTP ใหม่
+FailedLoginCount ระงับเมื่อผิดครบ 5 ครั้ง และ LockedUntil กำหนด 15 นาที ใช้กับ Credential Login, Staff Verification, Device Change และ OTP ตาม Request/Staff ที่เกี่ยวข้อง
+LastLoginAt บันทึกเมื่อ Credential Login หรือ First-use Staff Verification สำเร็จ
+Username ต้อง Unique และ RoleKey ต้องมีใน RoleDB
+การเปลี่ยน RoleKey, LoginEnabled หรือปลดล็อกบัญชีต้องบันทึก BeforeJSON/AfterJSON/ChangeReason
+TEACHER/EXECUTIVE ใช้ PINHash + PINSalt เก็บ hash/salt ของ Trusted Device token ตาม Role-specific contract โดยห้ามเก็บ token จริง อนุญาตหนึ่งอุปกรณ์ต่อ StaffID มีอายุถึง TermEndDate และอุปกรณ์ใหม่ต้องแทนอุปกรณ์เดิม ห้ามเก็บข้อมูลสุขภาพหรือเลขบัตรไว้ใน localStorage
+5.1 Email Notification Contract
+อีเมลแจ้งเตือนทุกเหตุการณ์ด้านสิทธิ์และความปลอดภัยส่งถึง Email ของ StaffDB ทุกคนที่ RoleKey = ADMIN หรือ HEALTH, LoginEnabled = TRUE และ RecordStatus = ACTIVE
+ผู้ส่งต้องเป็นอีเมลงานอนามัยที่กำหนดในระบบ Production; ห้ามฝังรหัสผ่านอีเมลใน Source Code หรือ Google Sheet
+เหตุการณ์ขั้นต่ำที่ต้องแจ้ง: BREAK_GLASS_ACCESS, EXTERNAL_DATA_REQUEST, LOCKOUT, TRUSTED_DEVICE_ENROLLED, TRUSTED_DEVICE_REVOKED, STAFF_DATA_CHANGE_REQUEST และ NationalID full reveal
+เนื้อหาอีเมลแจ้งเตือนมีเฉพาะ Event, StaffID, StudentID, EventAt และ RequestID ห้ามใส่เลขบัตรประชาชนเต็ม ชื่อยา ขนาดยา ข้อควรระวัง รายละเอียดสุขภาพ หรือ BeforeJSON/AfterJSON
+การส่งอีเมลล้มเหลวต้องบันทึก SYSTEM_ERROR และคิวให้ ADMIN/HEALTH เห็นในระบบ แต่ห้ามย้อนยกเลิกการช่วยเหลือฉุกเฉินที่เสร็จแล้ว
+6. Audit Log และการตรวจสอบย้อนหลัง
+Audit Policy
+LogDB เป็น append-only ห้ามแก้หรือลบรายการย้อนหลังผ่าน UI การแก้ข้อมูลธุรกิจทุกครั้งต้องมี RequestID, RecordID, BeforeJSON, AfterJSON และ ChangeReason
+Action
+เมื่อใด
+ข้อมูลขั้นต่ำ
+VIEW_SENSITIVE
+เปิดข้อมูลอ่อนไหวหรือเลขบัตร
+Role, ActorName/ID, AccessScope, RecordID
+VIEW_MEDICATION_PLAN
+TEACHER เปิดแผนยาปัจจุบันแบบจำกัดฟิลด์
+StaffID, Access Context, StudentID, ฟิลด์ที่เปิด, RequestID
+BREAK_GLASS_ACCESS
+เปิดเลขบัตรเต็มหรือข้อมูลจำเป็นในเหตุฉุกเฉิน
+StaffID, StudentID, Reason, ViewedFields, RequestID
+EXTERNAL_DATA_REQUEST
+บุคลากรทางการแพทย์ภายนอกขอข้อมูล
+Requester, Position, Organization, Contact, Purpose, RequestedFields, Urgency
+TRUSTED_DEVICE_ENROLLED / REVOKED
+สร้างหรือยกเลิกอุปกรณ์ที่จดจำ
+StaffID, SessionID/DeviceReference, ResultStatus, RequestID
+LOCKOUT
+กรอกข้อมูลยืนยันหรือ OTP ผิดครบ 5 ครั้ง
+StaffID/RequestID, LockedUntil, VerificationType, ResultStatus
+STAFF_DATA_CHANGE_REQUEST
+Phone หรือ Email ที่กรอกต่างจาก StaffDB
+StaffID, FieldName, masked old/new values, RequestID; ห้ามบันทึกค่าฉบับเต็มใน Log
+CREATE / UPDATE / CANCEL
+เปลี่ยนข้อมูลธุรกิจ
+Before/After, Reason, RowVersion
+EXPORT
+สร้างไฟล์หรือส่งออก
+ExportID, FileReferenceID, Scope
+ACCESS_DENIED
+ไม่ผ่าน Permission/Access Gate
+RequestID, Resource, ResultStatus
+STOCK_ISSUE
+จ่ายยาและตัด Lot
+VisitItemID, TransactionID, FEFOSequence
+SYSTEM_ERROR
+ข้อผิดพลาดจากโค้ด/บริการ
+ErrorCode, ModuleKey, SheetName
+Hash Chain: EntryHash = SHA-256 ของ payload มาตรฐานรวม PreviousHash รายการแรกใช้ PreviousHash = GENESIS ระบบต้องตรวจ chain ใน Foundation Gate และรายงานช่องว่างทันที
+7. การรับบริการและการจ่ายยาแบบหลายรายการ
+NurseVisitDB เก็บหัวรายการหนึ่งครั้งต่อการรับบริการ ส่วน NurseVisitItemDB เก็บ Line item จำนวน 0..n รายการ จึงจ่ายยาได้หลายตัวโดยไม่เพิ่มคอลัมน์ซ้ำ
+Step
+Action
+Sheet
+Contract
+1
+สร้าง Visit
+NurseVisitDB
+บันทึกอาการ ประเมิน การดูแล และผู้บันทึก
+2
+เพิ่ม Line
+NurseVisitItemDB
+ยา เวชภัณฑ์ หรือ CARE หลายรายการ
+3
+เลือก Lot
+StockTransactionDB
+ระบบเลือก ExpiryDate ใกล้สุดที่ยังใช้ได้
+4
+บันทึก Ledger
+StockTransactionDB
+หนึ่งรายการต่อ Lot ที่ถูกตัด
+5
+เชื่อมกลับ
+NurseVisitItemDB
+เก็บ StockTransactionID/ผลการจ่าย
+6
+Audit
+LogDB
+บันทึกผู้จ่าย เวลา และผลสำเร็จ/ล้มเหลว
+ตัด Routine Medication Log
+ไม่มีหน้าจอให้ครูเวรบันทึกการให้ยาทุกมื้อ และไม่มี MedicationLogDB งานยาประจำตัวยังคงอยู่ใน DrugDB ส่วนเหตุการณ์การจ่ายในห้องพยาบาลบันทึกผ่าน Visit/VisitItem เท่านั้น
+TEACHER ใช้ DrugDB เพื่อตรวจสอบความถูกต้องแบบ Read-only โดยแสดงเฉพาะชื่อยา ความแรง ขนาดยา เวลา วิธีใช้ และข้อควรระวัง ไม่ถือเป็นการบันทึกการให้ยา
+8. คลังยา Lot/Ledger และ FEFO
+CommonDrugStockDB เป็น Item Master และไม่มีคอลัมน์ยอดคงเหลือที่ให้ผู้ใช้แก้เอง ยอดต้องคำนวณจาก StockTransactionDB เท่านั้น
+รับเข้า: สร้าง RECEIVE พร้อม LotNumber, ExpiryDate และ Quantity
+จ่ายออก: เลือก Lot ที่ ExpiryDate ใกล้สุดก่อน (FEFO) และยอดเพียงพอ
+หากจำนวนที่ขอมากกว่าหนึ่ง Lot ให้สร้าง ISSUE หลายรายการโดยใช้ ReferenceID/VisitItemID เดียวกัน
+ห้ามจ่าย Lot หมดอายุ และต้องแจ้งเตือน Lot ใกล้หมดอายุ
+การปรับยอดใช้ ADJUST_IN/ADJUST_OUT พร้อม Reason; ห้ามแก้ธุรกรรมเก่า
+BalanceAfterLot และ BalanceAfterItem เป็น Snapshot เพื่อช่วยตรวจสอบ แต่ Ledger คือฐานความจริง
+Test
+Scenario
+Expected
+FEFO-01
+มี 2 Lot ต่างวันหมดอายุ
+ตัด Lot ที่หมดก่อน
+FEFO-02
+Lot แรกไม่พอ
+ตัด Lot แรกจนหมดแล้วต่อ Lot ถัดไป
+FEFO-03
+Lot หมดอายุ
+ไม่เลือกและสร้าง DENIED/Warning
+FEFO-04
+จ่ายหลายยาใน Visit เดียว
+แต่ละ VisitItem มี Ledger แยก
+FEFO-05
+บันทึกล้มเหลวกลางทาง
+Rollback หรือชดเชยครบ; ไม่เกิดยอดติดลบ
+9. โมดูลสุขภาพ รายงาน และข้อมูลหอนอน
+Module
+Canonical Sheets
+Key Rule
+Student / Classroom
+StudentDB, ClassroomDB
+TEACHER = own classroom; EXECUTIVE = all students
+แผนยาประจำตัว
+DrugDB
+แผนเท่านั้น ไม่ใช่ Daily MAR
+ส่งต่อ
+ReferDB
+รองรับชื่อครูผู้พาและการใช้เลขบัตร
+ตรวจสุขภาพ
+HealthDB
+เก็บ Raw + Result + Follow-up
+สมรรถภาพ
+FitnessDB
+ระบุ StandardVersion ทุกครั้ง
+โรคติดต่อ
+DiseaseEventDB
+EVENT/CASE/CONTACT/NOTICE ในชีตเดียว
+หอนอน
+DormDB + StudentDormHistoryDB
+ประวัติไม่ทับค่าเดิม
+รายงาน
+Query จาก Master/Transaction
+EXECUTIVE มี REPORT แบบ Read-only
+10. Design Style Contract
+Style Name
+Modern Clinical Command Center — Clinical Navy Single Theme: โทนเข้มเฉพาะโครงสร้างและจุดนำสายตา พื้นเนื้อหาสว่าง ลดความล้า และไม่เพิ่ม Theme toggle
+Token
+Color
+Usage
+Text Pair
+Structural Navy
+#0B1F3A
+Sidebar, Topbar, Sheet Header
+#FFFFFF
+Primary Action
+#1D4ED8
+ปุ่มหลัก ลิงก์ Focus
+#FFFFFF
+Icon Default
+#1E3A5F
+ไอคอน Navigation
+currentColor
+Active
+#2563EB
+Hover/Active icon and control
+#FFFFFF
+Active Surface
+#DBEAFE
+พื้น Active ที่อ่านสบาย
+#1E3A5F
+Clinical Teal
+#0F766E
+ข้อมูลสุขภาพรอง/สถานะเลือก
+#FFFFFF
+Background
+#F8FAFC
+พื้นหลังหน้า
+#0F172A
+Surface
+#FFFFFF
+Card/Table/Form
+#0F172A
+Success
+#15803D
+สำเร็จ/ปกติ
+#FFFFFF
+Warning
+#FEF3C7
+พื้นคำเตือน
+#92400E
+Danger
+#B91C1C
+อันตราย/ผิดพลาด
+#FFFFFF
+Muted
+#64748B
+ข้อความรองบนพื้นขาว
+#FFFFFF
+10.1 กฎหน้าจอ
+Desktop: Sidebar 280 px, Header 72 px, Content สูงสุด 1280 px
+Mobile: Bottom Navigation 5 รายการ; แบบฟอร์ม 1 คอลัมน์; ห้ามย่อ Desktop ตรง ๆ
+Prompt เป็นฟอนต์ UI หลัก และ Sarabun เป็นฟอนต์สำรอง
+Icon ใช้เส้น 2 px, Round cap/join, Grid 24 × 24, Safe area 20 × 20
+ไม่มี Dark Mode, Light Mode switch หรือ CSS token ชุดที่สอง
+ทุกข้อความและ Control ต้องผ่าน WCAG AA; ห้ามใช้สีอย่างเดียวสื่อสถานะ
+11. Foundation Gate, QA และ Change Control
+Gate
+เกณฑ์ผ่าน
+อนุญาตขั้นถัดไป
+G0
+Blueprint v1.3.3 + Design System v1.1 APPROVED & LOCKED
+เริ่มจัด Schema ได้
+G1
+20 ชีต ชื่อ/ลำดับ Header ตรง Data Dictionary
+เริ่ม Repository/Data Access ได้
+G2
+Validation, PK/FK, Soft delete, RowVersion ผ่าน
+เริ่ม CRUD ได้
+G3
+Role/Auth/Permission/Access Gate ผ่าน Test
+เริ่ม Dashboard ตาม Role ได้
+G4
+Audit Hash + Export trace + FEFO ผ่าน
+ทดสอบ UAT ได้
+G5
+Security/Privacy/Backup/Restore ผ่าน
+เปิด Production ได้
+11.1 Change Control
+การเปลี่ยน Sheet, Field, RoleKey, Permission Boolean, Access Gate, Theme Token หรือ Workflow FEFO ต้องออก Change Request ระบุเหตุผล ผลกระทบ Migration Test และ Version ใหม่ก่อนแก้โค้ด
+ประเภทการเปลี่ยน
+ผลกระทบขั้นต่ำที่ต้องประเมิน
+Role/Auth
+Session, route guard, access context และ audit actor
+Permission
+API query scope, field mask, export และปุ่มบนหน้าจอ
+Sheet/Field
+Repository, validation, migration, report และ test fixture
+Stock/FEFO
+Lot allocation, ledger, rollback และ reconciliation
+Theme Token
+Component regression, contrast และ icon state
+Architecture Gate
+ห้ามเริ่ม CRUD จนกว่า G1 และ G2 ผ่าน และห้ามเปิด Dashboard ตามบทบาทจนกว่า G3 ผ่าน
+11.2 Change Record CR-2026-08-01-01
+Version: 1.3.0 → 1.3.1
+สถานะ: APPROVED & LOCKED
+เหตุผล: ลดภาระครูที่ทำหลายหน้าที่ โดยยกเลิก QR/PIN สำหรับ TEACHER/EXECUTIVE ใช้ First-use Staff Verification + Trusted Device ให้ครูเลือก Access Context เอง เปิดแผนยาแบบจำกัดฟิลด์ และเพิ่ม NationalID Break-glass/External Medical Request
+ผลกระทบ Schema: ไม่มี; คง 20 ชีตและลำดับฟิลด์เดิมทั้งหมด
+ผลกระทบ Role/Auth: ADMIN/HEALTH คง Credential Login; TEACHER/EXECUTIVE ใช้ First-use Staff Verification และ Trusted Device ที่ยกเลิกได้
+ผลกระทบ Permission: TEACHER Read-only; DRUG_PLAN จำกัด 6 กลุ่มข้อมูล; NationalID เต็มใช้ Break-glass; EXECUTIVE ใช้ REPORT และห้าม Export ข้อมูลดิบ
+ผลกระทบ Audit: เพิ่ม VIEW_MEDICATION_PLAN, BREAK_GLASS_ACCESS, EXTERNAL_DATA_REQUEST, TRUSTED_DEVICE_ENROLLED และ TRUSTED_DEVICE_REVOKED
+Migration: ยังไม่มีข้อมูล Production; ปรับค่าเริ่มต้น RoleDB/PermissionDB/ConfigDB ก่อนสร้างข้อมูลจำลอง
+Test: Staff matching, trusted-device enroll/revoke/expire, context logging, medication field mask, NationalID mask/reveal, external requester form, rate limit และ audit hash chain
+11.3 Change Record CR-2026-08-01-02
+Version: 1.3.1 → 1.3.2
+สถานะ: APPROVED & LOCKED
+เหตุผล: ล็อกข้อมูลตรวจตัวตน การจัดการชื่อซ้ำ อายุอุปกรณ์ตามภาคเรียน Session/Idle Timeout/Lockout Emergency Access การเปลี่ยนและเพิกถอนอุปกรณ์ บริบทครู 3 แบบ Email OTP และ Security Notification
+ผลกระทบ Schema: ไม่มี; คง 20 ชีตและลำดับฟิลด์เดิม ใช้ ConfigDB สำหรับ TermEndDate/timeout/threshold และใช้ StaffDB/LogDB เดิม
+Staff Verification: FirstName + LastName; เมื่อซ้ำใช้ Phone; เมื่อ Phone/Email เปลี่ยนสร้าง STAFF_DATA_CHANGE_REQUEST และห้ามแก้ Master อัตโนมัติ
+Device Lifecycle: หนึ่ง Trusted Device ต่อ StaffID หมดอายุตาม TermEndDate; เปลี่ยนอุปกรณ์สุ่มถาม 2 จาก LastName/Phone/Email และแทนอุปกรณ์เดิม; ผู้ใช้เพิกถอนของตนได้และ ADMIN จัดการได้ทั้งหมด
+Session/Lockout: อายุสูงสุด 30 นาที; idle 15 นาที; ผิด 5 ครั้งระงับ 15 นาที; Emergency Access ยังใช้ได้แบบจำกัดและต้องแจ้งเตือน
+Teacher Context: ใช้เฉพาะ CLASSROOM, DUTY และ DORM
+ADMIN/HEALTH Authentication: Username + PIN/Password + Email OTP; Email จำเป็นเมื่อ LoginEnabled = TRUE
+Notification: ส่งถึง ADMIN/HEALTH ที่ Active ทุกคนจากอีเมลงานอนามัยสำหรับเหตุการณ์สิทธิ์/ความปลอดภัยที่กำหนด
+Test: duplicate-name resolution, changed contact review, OTP success/failure/expiry, 5-attempt lockout, emergency during lockout, term expiry, session absolute/idle timeout, device challenge/revoke, 3 context values, multi-recipient email and email failure audit
+11.4 Change Record CR-2026-08-01-03
+Version: 1.3.2 → 1.3.3
+สถานะ: APPROVED & LOCKED
+เหตุผล: ปิดจุดตัดสินใจก่อนเริ่ม G1 สำหรับ OTP Policy, Emergency Access จากอุปกรณ์ใหม่ และข้อมูลที่อนุญาตใน Security Email
+ผลกระทบ Schema: ไม่มี; คง 20 ชีตและลำดับฟิลด์เดิม ใช้ ConfigDB/Script Properties และ LogDB ตาม Contract เดิม
+OTP Policy: อายุ 10 นาที ส่งซ้ำหลัง 60 วินาที สูงสุด 3 ครั้งต่อ 15 นาที ใช้ครั้งเดียวและ OTP ใหม่ยกเลิกค่าเดิม
+Emergency Policy: อุปกรณ์ใหม่เปิด NationalID เต็มได้ Emergency Session 5 นาที หนึ่ง StudentID ต่อ Request ห้าม Browse/Export และต้อง Audit/Alert
+Email Policy: ส่งเฉพาะ Event, StaffID, StudentID, EventAt และ RequestID ห้ามใส่ NationalID เต็ม ข้อมูลยา ข้อมูลสุขภาพ หรือ Before/After payload
+Test: OTP expiry/resend/rate limit/single-use, emergency unknown-device timeout/single-student/no-browse/no-export และ email content redaction
+
+ภาคผนวก ก — Canonical Data Dictionary (20 ชีต)
+ตารางต่อไปนี้เป็นข้อกำหนดระดับฟิลด์ก่อนสร้าง CRUD เครื่องหมาย TEACHER* หมายถึงต้องผ่าน First-use Staff Verification มี Trusted Device ที่ยังใช้ได้ เลือก Access Context และผ่าน PermissionDB/field mask ของ Resource นั้น
+ก.01 ConfigDB
+Purpose: ค่ากำหนดกลางและ Feature/Policy ที่โค้ดอ่านใช้งาน • Canonical field count: 16
+Field
+Type
+Req
+Default
+Allowed / Validation
+Key / Relation
+Sensitivity
+Visible Roles / Scope
+ConfigID
+STRING
+Y
+—
+Required + Unique
+PK
+INTERNAL
+ADMIN, HEALTH
+ConfigGroup
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+ConfigKey
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+UQ/INDEX
+INTERNAL
+ADMIN, HEALTH
+ConfigValue
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+ValueType
+STRING
+Y
+—
+STRING | NUMBER | BOOLEAN | DATE | DATETIME | JSON | CSV
+—
+INTERNAL
+ADMIN, HEALTH
+SortOrder
+NUMBER
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+IsSystem
+BOOLEAN
+N
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH
+IsEditableByHealth
+BOOLEAN
+N
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH
+Description
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+RecordStatus
+STRING
+Y
+ACTIVE
+ACTIVE | CANCELLED | INVALID
+—
+INTERNAL
+ADMIN, HEALTH
+CreatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+CreatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+UpdatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+UpdatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+RowVersion
+NUMBER
+N
+1
+จำนวนเต็ม ≥ 1; เพิ่มเมื่อ Update
+—
+INTERNAL
+ADMIN, HEALTH
+Note
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+
+
+ก.02 ClassroomDB
+Purpose: ทะเบียนห้องเรียนและขอบเขตชั้นเรียน • Canonical field count: 14
+Field
+Type
+Req
+Default
+Allowed / Validation
+Key / Relation
+Sensitivity
+Visible Roles / Scope
+ClassroomID
+STRING
+Y
+—
+Required + Unique
+PK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+DisabilityType
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+GradeLevel
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+ClassroomName
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+AcademicYear
+NUMBER
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+SortOrder
+NUMBER
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+HomeroomStaffID
+STRING
+N
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RecordStatus
+STRING
+Y
+ACTIVE
+ACTIVE | CANCELLED | INVALID
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+CreatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+CreatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+UpdatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+UpdatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RowVersion
+NUMBER
+N
+1
+จำนวนเต็ม ≥ 1; เพิ่มเมื่อ Update
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Note
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+
+
+ก.03 StudentDB
+Purpose: ข้อมูลหลักนักเรียนและข้อมูลจำเป็นต่อการดูแล • Canonical field count: 24
+Field
+Type
+Req
+Default
+Allowed / Validation
+Key / Relation
+Sensitivity
+Visible Roles / Scope
+StudentID
+STRING
+Y
+—
+Required + Unique
+PK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+StudentCode
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+UQ/INDEX
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Prefix
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+FirstName
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+PERSONAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+LastName
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+PERSONAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+DisplayName
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+PERSONAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+ClassroomID
+STRING
+Y
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+DisabilityType
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Gender
+STRING
+N
+—
+MALE | FEMALE | UNSPECIFIED
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+BirthDate
+DATE
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+PERSONAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+NationalID
+STRING
+N
+—
+เลข 13 หลัก + ตรวจรูปแบบ
+REF/INDEX
+RESTRICTED
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+GuardianName
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+PERSONAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+GuardianPhone
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+PERSONAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+MedicalConditionSummary
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+SENSITIVE
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+DrugAllergy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+SENSITIVE
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+CriticalAlert
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+SENSITIVE
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+StudentStatus
+STRING
+Y
+—
+ACTIVE_STUDENT | TRANSFERRED | GRADUATED | INACTIVE
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RecordStatus
+STRING
+Y
+ACTIVE
+ACTIVE | CANCELLED | INVALID
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+CreatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+CreatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+UpdatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+UpdatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RowVersion
+NUMBER
+N
+1
+จำนวนเต็ม ≥ 1; เพิ่มเมื่อ Update
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Note
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+
+
+ก.04 StaffDB
+Purpose: บัญชีบุคลากรและสถานะการเข้าสู่ระบบ • Canonical field count: 24
+Field
+Type
+Req
+Default
+Allowed / Validation
+Key / Relation
+Sensitivity
+Visible Roles / Scope
+StaffID
+STRING
+Y
+—
+Required + Unique
+PK
+INTERNAL
+ADMIN, HEALTH
+Prefix
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+FirstName
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+PERSONAL
+ADMIN, HEALTH
+LastName
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+PERSONAL
+ADMIN, HEALTH
+DisplayName
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+PERSONAL
+ADMIN, HEALTH
+Position
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+Department
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+Phone
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+PERSONAL
+ADMIN, HEALTH
+Email
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+PERSONAL
+ADMIN, HEALTH
+Username
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+PINHash
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+RESTRICTED
+ADMIN, HEALTH
+PINSalt
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+RESTRICTED
+ADMIN, HEALTH
+RoleKey
+STRING
+Y
+—
+ADMIN | HEALTH | TEACHER | EXECUTIVE
+UQ/INDEX
+INTERNAL
+ADMIN, HEALTH
+LoginEnabled
+BOOLEAN
+Y
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH
+FailedLoginCount
+NUMBER
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+LockedUntil
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+LastLoginAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+RecordStatus
+STRING
+Y
+ACTIVE
+ACTIVE | CANCELLED | INVALID
+—
+INTERNAL
+ADMIN, HEALTH
+CreatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+CreatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+UpdatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+UpdatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+RowVersion
+NUMBER
+N
+1
+จำนวนเต็ม ≥ 1; เพิ่มเมื่อ Update
+—
+INTERNAL
+ADMIN, HEALTH
+Note
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+
+
+ก.05 RoleDB
+Purpose: บทบาทมาตรฐาน 4 ค่าและรูปแบบการเข้าถึง • Canonical field count: 14
+Field
+Type
+Req
+Default
+Allowed / Validation
+Key / Relation
+Sensitivity
+Visible Roles / Scope
+RoleKey
+STRING
+Y
+—
+Required + Unique
+PK
+INTERNAL
+ADMIN, HEALTH
+RoleName
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+LoginRequired
+BOOLEAN
+Y
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH
+PublicAccess
+BOOLEAN
+Y
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH
+AccessGate
+STRING
+Y
+—
+LOGIN | STAFF_VERIFICATION_TRUSTED_DEVICE | NONE
+—
+INTERNAL
+ADMIN, HEALTH
+DataScope
+STRING
+Y
+—
+ALL_DATA | DECLARED_CONTEXT | ALL_STUDENTS_REPORT
+—
+INTERNAL
+ADMIN, HEALTH
+Description
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+RecordStatus
+STRING
+Y
+ACTIVE
+ACTIVE | CANCELLED | INVALID
+—
+INTERNAL
+ADMIN, HEALTH
+CreatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+CreatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+UpdatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+UpdatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+RowVersion
+NUMBER
+N
+1
+จำนวนเต็ม ≥ 1; เพิ่มเมื่อ Update
+—
+INTERNAL
+ADMIN, HEALTH
+Note
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+
+
+ก.06 PermissionDB
+Purpose: สิทธิ์ราย Resource และเงื่อนไขก่อนเข้าถึง • Canonical field count: 21
+Field
+Type
+Req
+Default
+Allowed / Validation
+Key / Relation
+Sensitivity
+Visible Roles / Scope
+PermissionID
+STRING
+Y
+—
+Required + Unique
+PK
+INTERNAL
+ADMIN, HEALTH
+RoleKey
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+UQ/INDEX
+INTERNAL
+ADMIN, HEALTH
+ResourceKey
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+UQ/INDEX
+INTERNAL
+ADMIN, HEALTH
+CanView
+BOOLEAN
+Y
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH
+CanCreate
+BOOLEAN
+N
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH
+CanUpdate
+BOOLEAN
+N
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH
+CanCancel
+BOOLEAN
+N
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH
+CanExport
+BOOLEAN
+N
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH
+CanViewNationalID
+BOOLEAN
+N
+FALSE
+TRUE | FALSE
+FK
+INTERNAL
+ADMIN, HEALTH
+CanViewReports
+BOOLEAN
+N
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH
+CanManageUsers
+BOOLEAN
+N
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH
+CanModifySchema
+BOOLEAN
+N
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH
+DataScope
+STRING
+Y
+—
+ALL_DATA | DECLARED_CONTEXT | ALL_STUDENTS_REPORT | NONE
+—
+INTERNAL
+ADMIN, HEALTH
+AccessGate
+STRING
+Y
+—
+LOGIN | STAFF_VERIFICATION_TRUSTED_DEVICE | NONE | DENY
+—
+INTERNAL
+ADMIN, HEALTH
+RecordStatus
+STRING
+Y
+ACTIVE
+ACTIVE | CANCELLED | INVALID
+—
+INTERNAL
+ADMIN, HEALTH
+CreatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+CreatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+UpdatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+UpdatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+RowVersion
+NUMBER
+N
+1
+จำนวนเต็ม ≥ 1; เพิ่มเมื่อ Update
+—
+INTERNAL
+ADMIN, HEALTH
+Note
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+
+
+ก.07 DutyDB
+Purpose: เวรและช่วงเวลาปฏิบัติงาน โดยไม่ใช้เป็นภาระบันทึกการให้ยา • Canonical field count: 17
+Field
+Type
+Req
+Default
+Allowed / Validation
+Key / Relation
+Sensitivity
+Visible Roles / Scope
+DutyID
+STRING
+Y
+—
+Required + Unique
+PK
+INTERNAL
+ADMIN, HEALTH
+DutyDate
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+Shift
+STRING
+N
+—
+MORNING | AFTERNOON | EVENING | NIGHT | ALL_DAY
+—
+INTERNAL
+ADMIN, HEALTH
+StaffID
+STRING
+Y
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH
+DutyType
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+ScopeType
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+ScopeID
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+REF/INDEX
+INTERNAL
+ADMIN, HEALTH
+StartsAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+EndsAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+Description
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+RecordStatus
+STRING
+Y
+ACTIVE
+ACTIVE | CANCELLED | INVALID
+—
+INTERNAL
+ADMIN, HEALTH
+CreatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+CreatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+UpdatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+UpdatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+RowVersion
+NUMBER
+N
+1
+จำนวนเต็ม ≥ 1; เพิ่มเมื่อ Update
+—
+INTERNAL
+ADMIN, HEALTH
+Note
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+
+
+ก.08 DrugDB
+Purpose: แผนยาประจำตัวของนักเรียน ไม่ใช่บันทึกการให้ยาทุกมื้อ • Canonical field count: 30
+Field
+Type
+Req
+Default
+Allowed / Validation
+Key / Relation
+Sensitivity
+Visible Roles / Scope
+DrugPlanID
+STRING
+Y
+—
+Required + Unique
+PK
+SENSITIVE
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RecordedAt
+DATETIME
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+AcademicYear
+NUMBER
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Term
+NUMBER
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+StudentID
+STRING
+Y
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+MedicineName
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+SENSITIVE
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Strength
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Dose
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+SENSITIVE
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Route
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+MorningBeforeMeal
+BOOLEAN
+N
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+MorningAfterMeal
+BOOLEAN
+N
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+NoonBeforeMeal
+BOOLEAN
+N
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+NoonAfterMeal
+BOOLEAN
+N
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+EveningBeforeMeal
+BOOLEAN
+N
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+EveningAfterMeal
+BOOLEAN
+N
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Bedtime
+BOOLEAN
+N
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+PRNInstruction
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+SENSITIVE
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Precaution
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+PlanStatus
+STRING
+Y
+—
+ACTIVE | PAUSED | STOPPED
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+DocumentStatus
+STRING
+N
+—
+COMPLETE | INCOMPLETE | NOT_APPLICABLE
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+VerifiedByStaffID
+STRING
+N
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+DocumentReferenceID
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+REF/INDEX
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RecordedByStaffID
+STRING
+N
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RecordStatus
+STRING
+Y
+ACTIVE
+ACTIVE | CANCELLED | INVALID
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+CreatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+CreatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+UpdatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+UpdatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RowVersion
+NUMBER
+N
+1
+จำนวนเต็ม ≥ 1; เพิ่มเมื่อ Update
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Note
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+
+
+ก.09 NurseVisitItemDB
+Purpose: รายการยา เวชภัณฑ์ หรือการดูแลหลายรายการต่อ Visit • Canonical field count: 21
+Field
+Type
+Req
+Default
+Allowed / Validation
+Key / Relation
+Sensitivity
+Visible Roles / Scope
+VisitItemID
+STRING
+Y
+—
+Required + Unique
+PK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+VisitID
+STRING
+Y
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+LineNo
+NUMBER
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+ItemType
+STRING
+Y
+—
+DRUG | SUPPLY | CARE
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+StockItemID
+STRING
+N
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+ItemNameSnapshot
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Quantity
+NUMBER
+Y
+—
+ตัวเลข ≥ 0
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Unit
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Instruction
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+SENSITIVE
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+LotNumber
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+ExpiryDate
+DATE
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+StockTransactionID
+STRING
+N
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+DispensedByStaffID
+STRING
+N
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+DispensedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RecordStatus
+STRING
+Y
+ACTIVE
+ACTIVE | CANCELLED | INVALID
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+CreatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+CreatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+UpdatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+UpdatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RowVersion
+NUMBER
+N
+1
+จำนวนเต็ม ≥ 1; เพิ่มเมื่อ Update
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Note
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+
+
+ก.10 NurseVisitDB
+Purpose: หัวรายการรับบริการห้องพยาบาล • Canonical field count: 19
+Field
+Type
+Req
+Default
+Allowed / Validation
+Key / Relation
+Sensitivity
+Visible Roles / Scope
+VisitID
+STRING
+Y
+—
+Required + Unique
+PK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+VisitedAt
+DATETIME
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+AcademicYear
+NUMBER
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Term
+NUMBER
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+StudentID
+STRING
+Y
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Symptom
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+SENSITIVE
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Assessment
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+SENSITIVE
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+CareProvided
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+SENSITIVE
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Disposition
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+FollowUpRequired
+BOOLEAN
+N
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+FollowUpAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RecordedByStaffID
+STRING
+Y
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RecordStatus
+STRING
+Y
+ACTIVE
+ACTIVE | CANCELLED | INVALID
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+CreatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+CreatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+UpdatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+UpdatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RowVersion
+NUMBER
+N
+1
+จำนวนเต็ม ≥ 1; เพิ่มเมื่อ Update
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Note
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+
+
+ก.11 ReferDB
+Purpose: การส่งต่อสถานพยาบาลและผลติดตาม • Canonical field count: 20
+Field
+Type
+Req
+Default
+Allowed / Validation
+Key / Relation
+Sensitivity
+Visible Roles / Scope
+ReferID
+STRING
+Y
+—
+Required + Unique
+PK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+ReferredAt
+DATETIME
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+StudentID
+STRING
+Y
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+VisitID
+STRING
+N
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+FacilityName
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Reason
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+PreliminaryCare
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+SENSITIVE
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+NationalIDUsed
+BOOLEAN
+N
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+ReferredByStaffID
+STRING
+N
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+AccompanyingTeacherName
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+PERSONAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Outcome
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+FollowUpAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+DocumentReferenceID
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+REF/INDEX
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RecordStatus
+STRING
+Y
+ACTIVE
+ACTIVE | CANCELLED | INVALID
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+CreatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+CreatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+UpdatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+UpdatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RowVersion
+NUMBER
+N
+1
+จำนวนเต็ม ≥ 1; เพิ่มเมื่อ Update
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Note
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+
+
+ก.12 HealthDB
+Purpose: ผลตรวจและคัดกรองสุขภาพ • Canonical field count: 24
+Field
+Type
+Req
+Default
+Allowed / Validation
+Key / Relation
+Sensitivity
+Visible Roles / Scope
+HealthRecordID
+STRING
+Y
+—
+Required + Unique
+PK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RecordedAt
+DATETIME
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+AcademicYear
+NUMBER
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Term
+NUMBER
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+StudentID
+STRING
+Y
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+WeightKg
+NUMBER
+N
+—
+ตัวเลข ≥ 0
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+HeightCm
+NUMBER
+N
+—
+ตัวเลข ≥ 0
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+BMI
+NUMBER
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+BMIResult
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+BloodPressure
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+VisionResult
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+HearingResult
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+OralHealthResult
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+ScreeningSummary
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+FollowUpRequired
+BOOLEAN
+N
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+FollowUpAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RecordedByStaffID
+STRING
+N
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RecordStatus
+STRING
+Y
+ACTIVE
+ACTIVE | CANCELLED | INVALID
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+CreatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+CreatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+UpdatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+UpdatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RowVersion
+NUMBER
+N
+1
+จำนวนเต็ม ≥ 1; เพิ่มเมื่อ Update
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Note
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+
+
+ก.13 FitnessDB
+Purpose: ผลทดสอบสมรรถภาพตามเวอร์ชันเกณฑ์ • Canonical field count: 21
+Field
+Type
+Req
+Default
+Allowed / Validation
+Key / Relation
+Sensitivity
+Visible Roles / Scope
+FitnessRecordID
+STRING
+Y
+—
+Required + Unique
+PK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+TestedAt
+DATETIME
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+AcademicYear
+NUMBER
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Term
+NUMBER
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+StudentID
+STRING
+Y
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+TestName
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RawValue
+NUMBER
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Unit
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+ResultLevel
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+StandardVersion
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+OverallResult
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+FollowUpRequired
+BOOLEAN
+N
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+FollowUpNote
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+TestedByStaffID
+STRING
+N
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RecordStatus
+STRING
+Y
+ACTIVE
+ACTIVE | CANCELLED | INVALID
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+CreatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+CreatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+UpdatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+UpdatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RowVersion
+NUMBER
+N
+1
+จำนวนเต็ม ≥ 1; เพิ่มเมื่อ Update
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Note
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+
+
+ก.14 LogDB
+Purpose: Audit Log แบบ append-only สำหรับการดู แก้ไข ส่งออก และข้อผิดพลาด • Canonical field count: 25
+Field
+Type
+Req
+Default
+Allowed / Validation
+Key / Relation
+Sensitivity
+Visible Roles / Scope
+LogID
+STRING
+Y
+—
+Required + Unique
+PK
+INTERNAL
+ADMIN, HEALTH
+EventAt
+DATETIME
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+RequestID
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+REF/INDEX
+INTERNAL
+ADMIN, HEALTH
+SessionID
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+REF/INDEX
+INTERNAL
+ADMIN, HEALTH
+ActorType
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+ActorID
+STRING
+N
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH
+ActorName
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+PERSONAL
+ADMIN, HEALTH
+RoleKey
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+UQ/INDEX
+INTERNAL
+ADMIN, HEALTH
+AccessScope
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+ModuleKey
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+SheetName
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+Action
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+RecordID
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+REF/INDEX
+INTERNAL
+ADMIN, HEALTH
+BeforeJSON
+JSON
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+SENSITIVE
+ADMIN, HEALTH
+AfterJSON
+JSON
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+SENSITIVE
+ADMIN, HEALTH
+ChangeReason
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+ExportID
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+REF/INDEX
+INTERNAL
+ADMIN, HEALTH
+FileReferenceID
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+REF/INDEX
+INTERNAL
+ADMIN, HEALTH
+ResultStatus
+STRING
+Y
+—
+SUCCESS | FAILURE | DENIED
+—
+INTERNAL
+ADMIN, HEALTH
+ErrorCode
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+PreviousHash
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+EntryHash
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+RetentionClass
+STRING
+N
+—
+STANDARD | SENSITIVE | PERMANENT
+—
+INTERNAL
+ADMIN, HEALTH
+CreatedAt
+DATETIME
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+Note
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+
+
+ก.15 CommonDrugStockDB
+Purpose: ทะเบียนรายการยาและเวชภัณฑ์ • Canonical field count: 18
+Field
+Type
+Req
+Default
+Allowed / Validation
+Key / Relation
+Sensitivity
+Visible Roles / Scope
+StockItemID
+STRING
+Y
+—
+Required + Unique
+PK
+INTERNAL
+ADMIN, HEALTH
+ItemCode
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+UQ/INDEX
+INTERNAL
+ADMIN, HEALTH
+ItemName
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+GenericName
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+DosageForm
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+Strength
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+Unit
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+Category
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+StorageLocation
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+ReorderLevel
+NUMBER
+N
+—
+ตัวเลข ≥ 0
+—
+INTERNAL
+ADMIN, HEALTH
+IsDispensable
+BOOLEAN
+Y
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH
+RecordStatus
+STRING
+Y
+ACTIVE
+ACTIVE | CANCELLED | INVALID
+—
+INTERNAL
+ADMIN, HEALTH
+CreatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+CreatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+UpdatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+UpdatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+RowVersion
+NUMBER
+N
+1
+จำนวนเต็ม ≥ 1; เพิ่มเมื่อ Update
+—
+INTERNAL
+ADMIN, HEALTH
+Note
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+
+
+ก.16 StockTransactionDB
+Purpose: บัญชีเคลื่อนไหวแยก Lot/Expiry และฐานคำนวณ FEFO • Canonical field count: 24
+Field
+Type
+Req
+Default
+Allowed / Validation
+Key / Relation
+Sensitivity
+Visible Roles / Scope
+StockTransactionID
+STRING
+Y
+—
+Required + Unique
+PK
+INTERNAL
+ADMIN, HEALTH
+TransactionAt
+DATETIME
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+StockItemID
+STRING
+Y
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH
+TransactionType
+STRING
+Y
+—
+RECEIVE | ISSUE | ADJUST_IN | ADJUST_OUT | RETURN | EXPIRE
+—
+INTERNAL
+ADMIN, HEALTH
+Quantity
+NUMBER
+Y
+—
+ตัวเลข ≥ 0
+—
+INTERNAL
+ADMIN, HEALTH
+Unit
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+LotNumber
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+ExpiryDate
+DATE
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+ReferenceType
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+ReferenceID
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+REF/INDEX
+INTERNAL
+ADMIN, HEALTH
+VisitItemID
+STRING
+N
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH
+StudentID
+STRING
+N
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH
+RecordedByStaffID
+STRING
+N
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH
+FEFOSequence
+NUMBER
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+BalanceAfterLot
+NUMBER
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+BalanceAfterItem
+NUMBER
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+Reason
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+RecordStatus
+STRING
+Y
+ACTIVE
+ACTIVE | CANCELLED | INVALID
+—
+INTERNAL
+ADMIN, HEALTH
+CreatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+CreatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+UpdatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+UpdatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+RowVersion
+NUMBER
+N
+1
+จำนวนเต็ม ≥ 1; เพิ่มเมื่อ Update
+—
+INTERNAL
+ADMIN, HEALTH
+Note
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+
+
+ก.17 DiseaseEventDB
+Purpose: เหตุการณ์ ผู้ป่วย ผู้สัมผัส และประกาศสาธารณะ • Canonical field count: 24
+Field
+Type
+Req
+Default
+Allowed / Validation
+Key / Relation
+Sensitivity
+Visible Roles / Scope
+DiseaseEventID
+STRING
+Y
+—
+Required + Unique
+PK
+SENSITIVE
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RecordType
+STRING
+Y
+—
+EVENT | CASE | CONTACT | NOTICE
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+ParentEventID
+STRING
+N
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+ReportedAt
+DATETIME
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+StudentID
+STRING
+N
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+DiseaseName
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+SENSITIVE
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Symptom
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+SENSITIVE
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+OnsetDate
+DATE
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+DiagnosisDate
+DATE
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+SENSITIVE
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+ScopeType
+STRING
+N
+—
+STUDENT | CLASSROOM | DORM | SCHOOL
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+ScopeID
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+REF/INDEX
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+AlertLevel
+STRING
+N
+—
+INFO | WATCH | URGENT
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+ActionTaken
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+EventStatus
+STRING
+Y
+—
+OPEN | MONITORING | CLOSED
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+ClosedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+ResponsibleStaffID
+STRING
+N
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+PublicNoticeText
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RecordStatus
+STRING
+Y
+ACTIVE
+ACTIVE | CANCELLED | INVALID
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+CreatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+CreatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+UpdatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+UpdatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RowVersion
+NUMBER
+N
+1
+จำนวนเต็ม ≥ 1; เพิ่มเมื่อ Update
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Note
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+
+
+ก.18 AssignmentDB
+Purpose: การมอบหมายบุคลากรกับห้อง หอ หรือนักเรียน • Canonical field count: 17
+Field
+Type
+Req
+Default
+Allowed / Validation
+Key / Relation
+Sensitivity
+Visible Roles / Scope
+AssignmentID
+STRING
+Y
+—
+Required + Unique
+PK
+INTERNAL
+ADMIN, HEALTH
+StaffID
+STRING
+Y
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH
+AssignmentType
+STRING
+Y
+—
+DUTY | DORM | CLASSROOM | SPECIAL
+—
+INTERNAL
+ADMIN, HEALTH
+ScopeType
+STRING
+Y
+—
+SCHOOL | DORM | CLASSROOM | STUDENT
+—
+INTERNAL
+ADMIN, HEALTH
+ScopeID
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+REF/INDEX
+INTERNAL
+ADMIN, HEALTH
+RoleKey
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+UQ/INDEX
+INTERNAL
+ADMIN, HEALTH
+StartsAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+EndsAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+ApprovedByStaffID
+STRING
+N
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH
+Reason
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+RecordStatus
+STRING
+Y
+ACTIVE
+ACTIVE | CANCELLED | INVALID
+—
+INTERNAL
+ADMIN, HEALTH
+CreatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+CreatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+UpdatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+UpdatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+RowVersion
+NUMBER
+N
+1
+จำนวนเต็ม ≥ 1; เพิ่มเมื่อ Update
+—
+INTERNAL
+ADMIN, HEALTH
+Note
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH
+
+
+ก.19 DormDB
+Purpose: ทะเบียนหอนอน • Canonical field count: 13
+Field
+Type
+Req
+Default
+Allowed / Validation
+Key / Relation
+Sensitivity
+Visible Roles / Scope
+DormID
+STRING
+Y
+—
+Required + Unique
+PK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+DormCode
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+UQ/INDEX
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+DormName
+STRING
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+GenderGroup
+STRING
+N
+—
+MALE | FEMALE | MIXED
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+DisabilityGroup
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Capacity
+NUMBER
+N
+—
+ตัวเลข ≥ 0
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RecordStatus
+STRING
+Y
+ACTIVE
+ACTIVE | CANCELLED | INVALID
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+CreatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+CreatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+UpdatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+UpdatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RowVersion
+NUMBER
+N
+1
+จำนวนเต็ม ≥ 1; เพิ่มเมื่อ Update
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Note
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+
+
+ก.20 StudentDormHistoryDB
+Purpose: ประวัติการพักและย้ายหอนอน • Canonical field count: 16
+Field
+Type
+Req
+Default
+Allowed / Validation
+Key / Relation
+Sensitivity
+Visible Roles / Scope
+StudentDormHistoryID
+STRING
+Y
+—
+Required + Unique
+PK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+StudentID
+STRING
+Y
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+DormID
+STRING
+Y
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+StartsOn
+DATE
+Y
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+EndsOn
+DATE
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+ChangeType
+STRING
+Y
+—
+NEW | TRANSFER | EXIT
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+IsCurrent
+BOOLEAN
+Y
+FALSE
+TRUE | FALSE
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Reason
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RecordedByStaffID
+STRING
+N
+—
+ต้องพบใน Master ที่อ้างอิง
+FK
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RecordStatus
+STRING
+Y
+ACTIVE
+ACTIVE | CANCELLED | INVALID
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+CreatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+CreatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+UpdatedAt
+DATETIME
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+UpdatedBy
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+RowVersion
+NUMBER
+N
+1
+จำนวนเต็ม ≥ 1; เพิ่มเมื่อ Update
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+Note
+STRING
+N
+—
+ชนิดข้อมูลและความยาวตาม Contract
+—
+INTERNAL
+ADMIN, HEALTH, TEACHER*, EXECUTIVE
+
+
+ภาคผนวก ข — Module Completion Report
+หัวข้อ
+ผลการส่งมอบ
+Scope
+ปรับ Blueprint, Google Sheets Foundation และ Design Style Contract
+Schema
+20 ชีต Canonical; MedicationLogDB ถูกแทนด้วย NurseVisitItemDB
+Roles
+ADMIN, HEALTH, TEACHER, EXECUTIVE
+Auth
+ADMIN/HEALTH ใช้ Credential Login + Email OTP อายุ 10 นาที; TEACHER/EXECUTIVE ใช้ FirstName/LastName/Phone/Email verification + Trusted Device อายุหนึ่งภาคเรียน โดยไม่ใช้ QR/PIN
+Permission
+TEACHER read-only + declared context + medication limited view + NationalID Break-glass; EXECUTIVE read-only reports; external requester ไม่มีบัญชี
+Audit
+Before/After, Reason, Export refs, Medication View, Break-glass, External Request, Trusted Device, Lockout, Staff Data Change, Email Notification และ Hash chain contract
+Stock
+Item Master + Lot Ledger + FEFO + multi-item Visit
+Design
+Clinical Navy Single Theme; ไม่มีโหมดมืด
+Pending
+ยังไม่อนุญาต CRUD จนกว่า G1–G2 ผ่านจากการทดสอบโค้ดจริง
+ผลกระทบต่อโมดูล: Database Access, Authentication, Permission Guard, Dashboard, Student Profile, Nurse Visit, Stock, Report และ Audit ต้องอ้างชื่อใหม่จากเอกสารนี้ ห้ามใช้ NURSE, TEACHER_VIEW, EXECUTIVE_VIEW หรือ MedicationLogDB ในโค้ดใหม่
+Health V5 • System Blueprint v1.3.3
+
+หน้า 1
+
+Health V5 • System Blueprint v1.3.3
+
+หน้า 1
