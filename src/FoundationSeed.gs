@@ -106,7 +106,9 @@ function appendMissingRecords_(spreadsheet, sheetName, keyName, records) {
     var values = missing.map(function (record) {
       return headers.map(function (header) { return normalizeCellValue_(record[header]); });
     });
-    sheet.getRange(sheet.getLastRow() + 1, 1, values.length, headers.length).setValues(values);
+    var startRow = findNextRecordRow_(sheet);
+    ensureRowsAvailable_(sheet, startRow + values.length - 1);
+    sheet.getRange(startRow, 1, values.length, headers.length).setValues(values);
   }
   return missing.length;
 }

@@ -189,6 +189,7 @@ function getNumberFormat_(type) {
   if (type === 'NUMBER') return '0.########';
   if (type === 'DATE') return 'yyyy-mm-dd';
   if (type === 'DATETIME') return 'yyyy-mm-dd hh:mm:ss';
+  if (type === 'BOOLEAN') return 'General';
   return '@';
 }
 
