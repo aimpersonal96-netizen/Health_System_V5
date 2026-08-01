@@ -40,13 +40,35 @@
 
 **Status:** `APPROVED & LOCKED`
 
-## G3 — Pending User Acceptance to Start
+## G3 — Approved & Locked
 
-- [ ] Implement ADMIN/HEALTH credential login and Email OTP.
-- [ ] Implement TEACHER/EXECUTIVE first-use verification and trusted-device lifecycle.
-- [ ] Implement session, idle timeout, lockout, and device revocation.
-- [ ] Implement CLASSROOM, DUTY, and DORM access contexts.
-- [ ] Enforce PermissionDB and field masking on every backend request.
-- [ ] Implement security-event email metadata contract and G3 tests.
+- [x] Implemented ADMIN/HEALTH credential login with salted PIN hash and single-use Email OTP.
+- [x] Enforced OTP expiry, resend delay, rate limit, and generic authentication errors.
+- [x] Implemented TEACHER/EXECUTIVE first-use verification and one trusted device per term.
+- [x] Implemented device validation, replacement challenge, self revoke, and ADMIN revoke.
+- [x] Implemented 30-minute absolute session, 15-minute idle timeout, and 5-attempt/15-minute lockout.
+- [x] Implemented CLASSROOM, DUTY, and DORM contexts with backend Assignment/Duty scope validation.
+- [x] Enforced PermissionDB on backend requests and applied NationalID/medication/private-field masks.
+- [x] Implemented DEV-safe Email OTP and multi-recipient security alerts with metadata-only content.
+- [x] Corrected EXECUTIVE raw-export permission and restored the locked OTP resend Config value.
+- [x] Added automated G3 security tests and an Apps Script Security Contract Audit.
 
-No G3 authentication, trusted-device, session, or permission implementation has started.
+**Acceptance evidence (2026-08-01):**
+
+- User verified ADMIN and HEALTH Login + Email OTP + 1,800-second Session.
+- User verified First-use, Trusted Device, CLASSROOM scope, and Self revoke.
+- Both ADMIN and HEALTH test email accounts received security alerts.
+- Apps Script reported `G3 Security Contract Audit ผ่าน` with Email mode `SEND`.
+
+**Status:** `APPROVED & LOCKED`
+
+## First Business Module — Pending User Acceptance to Start
+
+- [ ] Implement ADMIN/HEALTH ClassroomDB and StudentDB management APIs.
+- [ ] Implement teacher context-first student search.
+- [ ] Enforce CLASSROOM, DORM, and DUTY query scopes.
+- [ ] Apply role field masks and partially mask NationalID.
+- [ ] Keep TEACHER read-only with no export.
+- [ ] Build responsive Desktop/Mobile UI and audit every search/view.
+
+No business-module UI or Student/Classroom CRUD implementation has started.

@@ -80,7 +80,7 @@ function makePermissionRecord_(role, resource, now, actor) {
     CanCreate: admin || health,
     CanUpdate: admin || health,
     CanCancel: admin || health,
-    CanExport: admin || health || executiveView,
+    CanExport: admin || health,
     CanViewNationalID: admin || health || (role === 'TEACHER' && ['STUDENT', 'REFER'].indexOf(resource) !== -1),
     CanViewReports: admin || health || executiveView,
     CanManageUsers: admin && resource === 'USER_MANAGEMENT',
